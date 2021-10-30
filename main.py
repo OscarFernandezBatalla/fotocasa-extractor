@@ -33,59 +33,87 @@ def scroll_slowly_until_end(driver):
 
     return driver.page_source
 
+
+def extract_flat_links(soup):
+    # found each flat AD
+    entries_in_page = soup.find('section', class_='re-Searchresult').findChildren("div", recursive=False)
+
+    # find the link of each flat
+    links = []
+    for entry in entries_in_page:
+        link_raw = entry.find('a')
+        if link_raw:
+            data_href = link_raw['href']
+            if data_href[:13] == "/es/alquiler/":
+                link = "https://www.fotocasa.es" + data_href
+                # print(link)
+                links.append(link)
+            else:
+                print(data_href[:12])
+                print("no proper link")
+        else:
+            print("no link detected")
+    return links
+
+
+def extract_info(link):
+    options = webdriver.ChromeOptions()
+    options.add_argument('--start-maximized')
+    driver = webdriver.Chrome(options=options)
+    print(link)
+    driver.get(link)
+
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+
+    price = soup.find('span', class_="re-DetailHeader-price").text.split()[0]
+    if '.' in price:
+        price = int(price.replace('.', ''))
+    print(price)
+
+    neigh = soup.find('h1', class_="re-DetailHeader-propertyTitle").text
+    if 'Piso de alquiler en ' in neigh:
+        neigh = neigh.replace('Piso de alquiler en ', '')
+    print(neigh)
+
+    features = [val.text for val in soup.find('ul', class_="re-DetailHeader-features").contents]
+    print(features)
+
+    description = soup.find('p', class_ = "fc-DetailDescription").text
+    print(description)
+
+
+
 def main():
     options = webdriver.ChromeOptions()
     # options.add_argument('--headless')
     options.add_argument('--start-maximized')
     driver = webdriver.Chrome(options=options)
 
-
-
     url = 'https://www.fotocasa.es/es/alquiler/pisos/barcelona-capital/todas-las-zonas/l?latitude=41.3854&longitude=2.17754&combinedLocationIds=724,9,8,232,376,8019,0,0,0'
     driver.get(url)
-    html = driver.page_source
-
-    # page = requests.get(url)
-    # soup = BeautifulSoup(page.content, 'html.parser')
-
-    # soup = BeautifulSoup(html,"html.parser")
-    # print(soup.find_all('title'))
     delay = 10
+
     try:
-        myElem = WebDriverWait(driver, delay).until(EC.presence_of_element_located((By.XPATH, '//*[@id="App"]/div[4]/div/div/div/footer/div/button[2]')))
+        WebDriverWait(driver, delay).until(EC.presence_of_element_located((By.XPATH, '//*[@id="App"]/div[4]/div/div/div/footer/div/button[2]')))
         btn_cookie = driver.find_element_by_xpath('//*[@id="App"]/div[4]/div/div/div/footer/div/button[2]')
         btn_cookie.click()
+        print("Pop up clicked")
 
-
-        print("ready1")
-        myElem = WebDriverWait(driver, delay).until(
+        WebDriverWait(driver, delay).until(
             EC.presence_of_element_located((By.XPATH, '//*[@id="App"]/div[2]/div[1]/div[4]/main/div/div[3]/section')))
 
-        print("ready2")
-
+        # scroll through page and return the HTML source
         content = scroll_slowly_until_end(driver)
-
         soup = BeautifulSoup(content, "html.parser")
 
-        entries_in_page = soup.find('section', class_='re-Searchresult').findChildren("div", recursive=False)
-        # print(html)
+        links = extract_flat_links(soup)
 
+        for link in links:
+            extract_info(link)
 
-        print(len(entries_in_page))
-        for i in entries_in_page:
-            print("\n\n")
-            print(i)
 
     except TimeoutException:
         print("Loading took too much time!")
-
-    # entries_in_page = soup.find('section', class_='re-Searchresult').findChildren("div", recursive=False)
-
-
-    # print(entries_in_page[3])
-    # for entry in entries_in_page:
-    #
-
 
 
 
