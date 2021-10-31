@@ -4,6 +4,7 @@ from selenium import webdriver
 import re
 import pandas as pd
 import logging
+import datetime
 
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.wait import WebDriverWait
@@ -37,7 +38,6 @@ def first_scroll_slowly_until_end(driver):
 
     while not found and time.time() < timeout:
         cnt += 1000
-        # time.sleep(1)
         driver.execute_script("window.scrollTo(0, " + str(cnt) + ");")
         try:
             driver.find_element_by_class_name("re-Pagination")
@@ -61,7 +61,6 @@ def scroll_slowly_until_end(driver):
 
     while not found and time.time() < timeout:
         cnt += 1000
-        # time.sleep(1)
         driver.execute_script("window.scrollTo(0, " + str(cnt) + ");")
         try:
             driver.find_element_by_class_name("re-Pagination")
@@ -134,9 +133,20 @@ def extract_info(link):
     print("price: " + str(price) + " rooms: " + str(rooms) + " restrooms: " + str(restrooms) + " sqrt_meters: "
           + str(sqrt_met) + " neighbourhood: " + neigh)
 
+    ########################################
+    # TODO: YOU CAN ADD HERE MORE ATTRIBUTES
+
     # description = soup.find('p', class_="fc-DetailDescription").text
+    # ...
+
+    ########################################
 
     driver.close()
+
+    dict_ = {"price": price, "rooms": rooms, "restrooms": restrooms, "sqrt_meters": sqrt_met,
+             "neighbourhood": neigh, "link": link}
+
+    return dict_
 
 
 def click_popup(driver):
@@ -161,11 +171,13 @@ def main():
     options.add_argument('--start-maximized')
     driver = webdriver.Chrome(options=options)
 
-
+    date = datetime.date.today().strftime("%d-%m-%Y")
 
     first_page = True
     total_pages = 0
     actual_page = 1
+
+    flats = []
 
     while actual_page < total_pages or first_page:
 
@@ -193,11 +205,19 @@ def main():
         links = extract_flat_links(soup)
 
         for link in links:
-            extract_info(link)
+            dict_ = extract_info(link)
+            flats.append(dict_)
 
         first_page = False
         actual_page += 1
 
+
+    # final dataframe of all flats
+    df = pd.DataFrame(flats)
+
+    # export of the dataframe to a csv file
+    df.to_csv(r'./' + date + "-fotocasa.csv", sep='*', index=False)
+    print("CSV created")
     exit(0)
 
 
