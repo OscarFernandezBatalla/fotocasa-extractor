@@ -3,8 +3,6 @@
 ## Requirements
 BeautifulSoup
 
-Requests
-
 Pandas
 
-lxml
+Selenium

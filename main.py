@@ -1,6 +1,5 @@
 
 from bs4 import BeautifulSoup
-import requests
 from selenium import webdriver
 import re
 import pandas as pd
@@ -11,6 +10,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 import time
+
 
 def scroll_slowly_until_end(driver):
     cnt = 0
@@ -76,11 +76,26 @@ def extract_info(link):
     print(neigh)
 
     features = [val.text for val in soup.find('ul', class_="re-DetailHeader-features").contents]
-    print(features)
 
-    description = soup.find('p', class_ = "fc-DetailDescription").text
-    print(description)
+    rooms = None
+    restrooms = None
+    sqrt_met = None
 
+    for feature in features:
+        if 'hab' in feature:
+            rooms = int(feature.split()[0])
+        elif 'baño' in feature:
+            restrooms = int(feature.split()[0])
+        elif 'm²' in feature:
+            sqrt_met = int(feature.split()[0])
+
+    print("rooms", rooms)
+    print("restrooms", restrooms)
+    print("sqrt_met", sqrt_met)
+
+    # description = soup.find('p', class_="fc-DetailDescription").text
+
+    driver.close()
 
 
 def main():
@@ -89,12 +104,14 @@ def main():
     options.add_argument('--start-maximized')
     driver = webdriver.Chrome(options=options)
 
-    url = 'https://www.fotocasa.es/es/alquiler/pisos/barcelona-capital/todas-las-zonas/l?latitude=41.3854&longitude=2.17754&combinedLocationIds=724,9,8,232,376,8019,0,0,0'
+    url = 'https://www.fotocasa.es/es/alquiler/pisos/barcelona-capital/todas-las-zonas/l?latitude=41.3854&longitude=' \
+          '2.17754&combinedLocationIds=724,9,8,232,376,8019,0,0,0'
     driver.get(url)
     delay = 10
 
     try:
-        WebDriverWait(driver, delay).until(EC.presence_of_element_located((By.XPATH, '//*[@id="App"]/div[4]/div/div/div/footer/div/button[2]')))
+        WebDriverWait(driver, delay).until(EC.presence_of_element_located
+                                           ((By.XPATH, '//*[@id="App"]/div[4]/div/div/div/footer/div/button[2]')))
         btn_cookie = driver.find_element_by_xpath('//*[@id="App"]/div[4]/div/div/div/footer/div/button[2]')
         btn_cookie.click()
         print("Pop up clicked")
@@ -111,10 +128,8 @@ def main():
         for link in links:
             extract_info(link)
 
-
     except TimeoutException:
         print("Loading took too much time!")
-
 
 
 if __name__ == "__main__":
