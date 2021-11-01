@@ -1,3 +1,4 @@
+import pickle
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -5,12 +6,16 @@ import re
 import pandas as pd
 import logging
 import datetime
-
+import os
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 import time
+
+
+def create_pickle(date):
+    pick_w = open(date + '.pkl', 'wb')
 
 
 def get_num_pages(driver):
@@ -57,10 +62,11 @@ def first_scroll_slowly_until_end(driver):
 def scroll_slowly_until_end(driver):
     cnt = 0
     found = False
-    timeout = time.time() + 60
+    timeout = time.time() + 40
 
     while not found and time.time() < timeout:
-        cnt += 1000
+        cnt += 200
+        time.sleep(0.1)
         driver.execute_script("window.scrollTo(0, " + str(cnt) + ");")
         try:
             driver.find_element_by_class_name("re-Pagination")
@@ -79,7 +85,7 @@ def extract_flat_links(soup):
     # found each flat AD
     entries_in_page = soup.find('section', class_='re-Searchresult').findChildren("div", recursive=False)
 
-    print("total entries found:", len(entries_in_page))
+    # print("total entries found:", len(entries_in_page))
 
     # find the link of each flat
     links = []
@@ -173,15 +179,24 @@ def main():
 
     date = datetime.date.today().strftime("%d-%m-%Y")
 
+    pickle_exists = os.path.isfile(date + '.pkl')
+    db = {}
+
+    if pickle_exists:
+        pickle_file = open(date + '.pkl', 'rb')
+        db = pickle.load(pickle_file)
+        pickle_file.close()
+
+    print("Database init:", db)
+
     first_page = True
-    total_pages = 0
+    total_pages = 999
     actual_page = 1
 
-    flats = []
+    while actual_page < total_pages:
 
-    while actual_page < total_pages or first_page:
-
-        print("Starting reading page:", actual_page)
+        print("Reading page " + str(actual_page) + " of " + str(total_pages))
+        print("Percent: " + str((actual_page * 100) / total_pages) + "%")
 
         # scroll through page and return the HTML source
         if first_page:
@@ -205,13 +220,21 @@ def main():
         links = extract_flat_links(soup)
 
         for link in links:
-            dict_ = extract_info(link)
-            flats.append(dict_)
+            if link not in db.keys():
+                dict_ = extract_info(link)
+                db[dict_['link']] = dict_
+
+            else:
+                print("link already in DB, skipping")
 
         first_page = False
         actual_page += 1
 
+        with open(date + '.pkl', 'wb') as pickle_file:
+            # update of pickle file
+            pickle.dump(db, pickle_file)
 
+    flats = db.values()
     # final dataframe of all flats
     df = pd.DataFrame(flats)
 
@@ -222,4 +245,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    for i in range(10):
+        try:
+            main()
+        except:
+            print("Reboot!", i)
+            continue
+    print('end of loop')
